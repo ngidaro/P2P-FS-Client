@@ -14,6 +14,7 @@ def get_data(msg):
     IP_address = ''
     port_UDP = ''
     port_TCP = ''
+    name = ''
 
     parsed_msg = msg.split(' ')
 
@@ -22,6 +23,7 @@ def get_data(msg):
         # If new user is being registered, we need to save the client address and port numbers
         if parsed_msg[0] == REGISTER:
             if len(parsed_msg) == 6:
+                name = parsed_msg[2]
                 IP_address = parsed_msg[3]
                 port_UDP = int(parsed_msg[4]) or 0
                 port_TCP = int(parsed_msg[5]) or 0
@@ -32,5 +34,5 @@ def get_data(msg):
     else:
         print("Invalid Command")
 
-    return IP_address, port_UDP, port_TCP
+    return IP_address, port_UDP, port_TCP, name
 
