@@ -47,6 +47,7 @@ def start_UDP_connection():
         elif msg == 'q':
             # De-register the user when the program quits
             cleanup_de_register(s, host, port, name)
+            s.close()
             sys.exit()
         else:
             # Save the clients IP and ports on the client side
@@ -55,6 +56,8 @@ def start_UDP_connection():
                 if client_host and client_port_UDP and client_port_TCP and name:
                     s.bind((client_host, client_port_UDP))
                     send_data_to(s, msg, host, port)
+            elif msg.split(' ')[0] == 'REGISTER':
+                print('Client is already Registered')
             else:
                 send_data_to(s, msg, host, port)
 
