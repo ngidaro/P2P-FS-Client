@@ -2,7 +2,7 @@ import socket
 import sys
 import display_commands as dc
 import parse_commands as pc
-
+import publish_files as pf
 
 def cleanup_de_register(s, host, port, name):
     if name:
@@ -68,6 +68,11 @@ def start_UDP_connection():
 
         elif msg.split(' ')[0] == 'REGISTER':
             print('Client is already Registered')
+
+        elif (msg.split(' ')[0] == 'PUBLISH' and len(msg.split(' '))>3):
+            all_files=msg[3:]
+            for file in all_files:
+                pf.SerializeFile(file)
         else:
             send_data_to(s, msg, host, port)
 
