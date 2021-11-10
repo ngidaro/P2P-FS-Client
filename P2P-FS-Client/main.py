@@ -1,9 +1,9 @@
 import socket
 import sys
 import display_commands as dc
-import parse_commands as pc
 import publish_files as pf
 from Server import Server
+from parse import parse_commands as pc
 
 
 # Functions which executes when user enters 'q' in the console. This is to De-register the user on "logout"
@@ -20,22 +20,34 @@ def send_data_to(s, msg):
 
     # Loop through all servers and send message to any one that is running
     for server in servers:
-        try:
-            s.sendto(str.encode(msg), (server.host, server.port))
+        exactRQNumber = 1
+        while exactRQNumber:
+            try:
+                s.sendto(str.encode(msg), (server.host, server.port))
 
-            # 1 second timeout... if there is a timeout, then try to send message to the next server
-            s.settimeout(1)
-            d = s.recvfrom(1024)
+                # 3 second timeout... if there is a timeout, then try to send message to the next server
+                s.settimeout(3)
+                d = s.recvfrom(1024)
 
-            reply = str(d[0].decode())
-            addr = d[1]
+                reply = str(d[0].decode())
+                addr = d[1]
 
-            print('Server Reply: ' + reply + '\n')
+                # Will check if the request # sent from the client matches the request # returned by the server
+                # If they don't match then resend the msg...
+                parsedReply = reply.split(' ')
 
-            return reply
+                if len(parsedReply) > 2 and parsedReply[1].isnumeric():
+                    if msg.split(' ')[1] == parsedReply[1]:
+                        print('Server Reply: ' + reply + '\n')
+                        return reply
+                else:
+                    print('Server Reply: ' + reply + '\n')
+                    return reply
 
-        except socket.timeout as e:
-            continue
+            except socket.timeout as e:
+                # set this to 0 to break out of while loop and move on to next server
+                exactRQNumber = 0
+                continue
 
     return ''
 
