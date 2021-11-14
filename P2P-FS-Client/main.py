@@ -4,6 +4,7 @@ import display_commands as dc
 import publish_files as pf
 from Server import Server
 from parse import parse_commands as pc
+import StartTCP as stcp
 
 
 # Functions which executes when user enters 'q' in the console. This is to De-register the user on "logout"
@@ -96,9 +97,18 @@ def start_UDP_connection():
             print('Client is already Registered')
 
         elif msg.split(' ')[0] == 'PUBLISH' and len(msg.split(' ')) > 3:
-            all_files = msg[3:]
+            send_data_to(s,msg)
+            all_files = msg.split(' ')[3:]
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind(('', 10010))
+            server_address = ('', 10000)
+
+            print(sys.stderr, 'connecting up on %s port %s' % server_address)
+            sock.connect(server_address)
             for file in all_files:
-                pf.SerializeFile(file)
+                stcp.SendFileNames(pf.SerializeFile(file), sock)
+            print(sys.stderr, 'closing socket')
+            sock.close()
         else:
             send_data_to(s, msg)
 
