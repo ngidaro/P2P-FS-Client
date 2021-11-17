@@ -97,16 +97,17 @@ def start_UDP_connection():
             print('Client is already Registered')
 
         elif msg.split(' ')[0] == 'PUBLISH' and len(msg.split(' ')) > 3:
-            send_data_to(s,msg)
             all_files = msg.split(' ')[3:]
+
+            send_data_to(s, msg)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.bind(('', 10010))
             server_address = ('', 10000)
-
             print(sys.stderr, 'connecting up on %s port %s' % server_address)
             sock.connect(server_address)
-            for file in all_files:
-                stcp.SendFileNames(pf.SerializeFile(file), sock)
+
+            sock.sendall(pf.SerializeFiles(all_files))
+
             print(sys.stderr, 'closing socket')
             sock.close()
         else:
