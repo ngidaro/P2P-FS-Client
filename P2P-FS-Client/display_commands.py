@@ -13,5 +13,5 @@ def display_commands():
     print('Downloading a File:')
     print('\t DOWNLOAD RQ# File-name\n')
     print('Update Contact Information:')
-    print('\t UPDATE-CONTACT RQ# Name\n')
+    print('\t UPDATE-CONTACT RQ# Name NEW-IP NEW-UDP_PORT NEW-TCP_PORT\n')
 

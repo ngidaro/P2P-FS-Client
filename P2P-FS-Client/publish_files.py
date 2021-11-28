@@ -2,7 +2,7 @@ import pickle
 from pathlib import Path
 
 
-def SerializeFiles(files):
+def SerializeFiles(inputString, files):
     allFileContent = []
     for f in files:
         if Path(f).exists():
@@ -12,7 +12,8 @@ def SerializeFiles(files):
             content.append("01111110")
             allFileContent += content
 
-    return pickle.dumps(allFileContent)
+    return pickle.dumps([inputString, allFileContent])
+    # return pickle.dumps(allFileContent)
     # ----------------
     # allfilecontent=[]
     #
