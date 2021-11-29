@@ -4,7 +4,7 @@ import display_commands as dc
 import publish_files as pf
 from Server import Server
 from parse import parse_commands as pc
-
+import pickle
 
 # Functions which executes when user enters 'q' in the console. This is to De-register the user on "logout"
 def cleanup_de_register(s, name):
@@ -109,6 +109,28 @@ def start_UDP_connection():
 
         elif msg.split(' ')[0] == 'REMOVE' and len(msg.split(' ')) > 3:
             send_data_to(s, msg)
+
+        elif msg.split(' ')[0] == 'DOWNLOAD' and len(msg.split(' ')) == 3:
+            send_data_to(s, msg)
+            f = open(msg.split(' ')[2], 'w')
+            chunknumber = 1
+            allcontent=b""
+            while True:
+                content=sock.recv(200)
+                allcontent+=content
+                if len(content)<200:
+                    print('File-End' +' '+ msg.split(' ')[2] + ' ' + msg.split(' ')[1] + ' ' + str(chunknumber) + ' ' + 'TEXT')
+                    break
+                else:
+                    print ('File ' + msg.split(' ')[2] + ' ' + msg.split(' ')[1] + ' ' + str(chunknumber)+ ' ' + 'TEXT')
+                    chunknumber += 1
+            unserializedcontent=pickle.loads(allcontent)
+            print(unserializedcontent)
+            for word in unserializedcontent:
+                f.write(word)
+            f.close()
+
+
 
         else:
             send_data_to(s, msg)
