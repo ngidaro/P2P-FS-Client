@@ -1,8 +1,16 @@
 import pickle
 from pathlib import Path
 
+# ************************************************************
+# serializeFiles:
+#   Description: Function which serializes the files to be sent over TCP to the server
+#   Parameters:
+#       inputString: Is the command entered by the user in the console
+#       files: Is an array of the file names entered by the user in the console
+# ************************************************************
 
-def SerializeFiles(inputString, files):
+
+def serializeFiles(inputString, files):
     allFileContent = []
     for f in files:
         if Path(f).exists():

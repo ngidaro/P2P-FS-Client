@@ -9,7 +9,16 @@ DOWNLOAD = 'DOWNLOAD'
 UPDATECONTACT = 'UPDATE-CONTACT'
 
 
-def get_data(msg):
+# ************************************************************
+# validateUserCommand:
+#   Description: Function which checks to see if the command inputted by the user is valid. Also checks to see if
+#         the user is registered before sending any data to the server
+#   Parameters:
+#       msg: Is the command entered by the user in the console
+# ************************************************************
+
+
+def validateUserCommand(msg):
     commands = [REGISTER, DEREGISTER, PUBLISH, REMOVE, RETRIEVEALL, RETRIEVEINFOT, SEARCHFILE, DOWNLOAD, UPDATECONTACT]
     IP_address = ''
     port_UDP = ''
