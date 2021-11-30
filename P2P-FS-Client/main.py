@@ -223,10 +223,9 @@ def startConnection():
                 print(f"Error {e}... Server may be down. Wait a few seconds and then try again...")
 
         elif msg.split(' ')[0] == 'DOWNLOAD' and len(msg.split(' ')) == 3:
-            f = open(msg.split(' ')[2], 'w')
-
             chunkNumber = 1
             allContent = b""
+            isDownloadError = False
 
             # Send DOWNLOAD request using TCP not UDP
             socketTCP.send(pickle.dumps([msg]))
@@ -246,21 +245,33 @@ def startConnection():
 
                     socketTCP.send(pickle.dumps([msg]))
                     continue
-
-                allContent += content
-                if len(content) < 200:
-                    print(f"FILE-END {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
-                    break
                 else:
-                    print(f"FILE {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
-                    chunkNumber += 1
+                    try:
+                        if content.decode().split(' ')[0] == "DOWNLOAD-ERROR":
+                            print(f"Server reply: {content.decode()}")
+                            isDownloadError = True
+                            break
+                    except UnicodeDecodeError as e:
+                        # If this is the error, then the data passed from server has been dumped by pickle
+                        pass
 
-            unserializedContent = pickle.loads(allContent)
+                    allContent += content
+                    if len(content) < 200:
+                        print(f"FILE-END {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
+                        break
+                    else:
+                        print(f"FILE {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
+                        chunkNumber += 1
 
-            for word in unserializedContent:
-                f.write(word)
+            if not isDownloadError:
+                f = open(msg.split(' ')[2], 'w')
 
-            f.close()
+                unserializedContent = pickle.loads(allContent)
+
+                for word in unserializedContent:
+                    f.write(word)
+
+                f.close()
         else:
             sendDataToServer(socketUDP, msg)
 
