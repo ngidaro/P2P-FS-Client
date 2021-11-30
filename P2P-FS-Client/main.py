@@ -193,6 +193,7 @@ def startConnection():
 
         elif msg.split(' ')[0] == 'PUBLISH':
             all_files = msg.split(' ')[3:]
+            
             # Before sending all we should check to see if a connection is available
             try:
                 filesToSend = pf.serializeFiles(msg, all_files)
