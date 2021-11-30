@@ -233,6 +233,19 @@ def startConnection():
             while True:
                 content = socketTCP.recv(200)
 
+                if not content:
+                    # If content is empty then connection to server has ended. At this moment, the server may have
+                    # terminated and then restored, so we have to create a new TCP socket
+
+                    # Close TCP and bind to new port
+                    socketTCP.close()
+
+                    # Create new socket with new TCP port
+                    socketTCP = initiateTCPSocket(client_host, client_port_TCP)
+
+                    socketTCP.send(pickle.dumps([msg]))
+                    continue
+
                 allContent += content
                 if len(content) < 200:
                     print(f"FILE-END {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
