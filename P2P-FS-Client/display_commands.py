@@ -18,7 +18,7 @@ def displayCommands():
     print('Search for Specific Files:')
     print('\t SEARCH-FILE RQ# File-name\n')
     print('Downloading a File:')
-    print('\t DOWNLOAD RQ# File-name\n')
+    print('\t DOWNLOAD RQ# username-to-download-from/filename.txt\n')
     print('Update Contact Information:')
     print('\t UPDATE-CONTACT RQ# Name NEW-IP NEW-UDP_PORT NEW-TCP_PORT\n')
 

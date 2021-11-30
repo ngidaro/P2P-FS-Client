@@ -264,7 +264,9 @@ def startConnection():
                         chunkNumber += 1
 
             if not isDownloadError:
-                f = open(msg.split(' ')[2], 'w')
+                parsedMsg = msg.split(' ')
+                filename = parsedMsg[2].split('/')[1]
+                f = open(filename, 'w')
 
                 unserializedContent = pickle.loads(allContent)
 
