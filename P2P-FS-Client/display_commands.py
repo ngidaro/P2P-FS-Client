@@ -1,4 +1,11 @@
-def display_commands():
+# ************************************************************
+# displayCommands:
+#   Description: Function which displays all the possible commands. (Displayed when user input 'menu' in console)
+#   Parameters: NONE
+# ************************************************************
+
+
+def displayCommands():
     print('To Register/De-Register a User:')
     print('\tREGISTER RQ# Name IP-Address UDP_Socket# TCP_Socket#')
     print('\tDE-REGISTER RQ# Name\n')
@@ -13,5 +20,5 @@ def display_commands():
     print('Downloading a File:')
     print('\t DOWNLOAD RQ# File-name\n')
     print('Update Contact Information:')
-    print('\t UPDATE-CONTACT RQ# Name\n')
+    print('\t UPDATE-CONTACT RQ# Name NEW-IP NEW-UDP_PORT NEW-TCP_PORT\n')
 

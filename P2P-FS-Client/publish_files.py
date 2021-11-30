@@ -1,15 +1,24 @@
 import pickle
 
+# ************************************************************
+# serializeFiles:
+#   Description: Function which serializes the files to be sent over TCP to the server
+#   Parameters:
+#       inputString: Is the command entered by the user in the console
+#       files: Is an array of the file names entered by the user in the console
+# ************************************************************
 
-def SerializeFiles(files):
-    allfilecontent=[]
+
+def serializeFiles(inputString, files):
+    allFileContent = []
     try:
         for f in files:
-            fil=open(f, 'r')
-            content = fil.readlines()
-            content.insert(0,"01111110")
+            file = open(f, 'r')
+            content = file.readlines()
+            content.insert(0, "01111110")
             content.append("01111110")
-            allfilecontent += content
-        return pickle.dumps(allfilecontent)
+            allFileContent += content
+
+        return pickle.dumps([inputString, allFileContent])
     except FileNotFoundError:
-        return "error"
+        return False
