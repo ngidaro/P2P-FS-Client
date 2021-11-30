@@ -103,32 +103,38 @@ def start_UDP_connection():
 
         elif msg.split(' ')[0] == 'PUBLISH' and len(msg.split(' ')) > 3:
             all_files = msg.split(' ')[3:]
-
-            sock.sendall(pf.SerializeFiles(all_files))
-            send_data_to(s, msg)
+            data=pf.SerializeFiles(all_files)
+            if data=="error":
+                print("PUBLISH-DENIED "+msg.split(' ')[1]+" FILE DOES NOT EXIST")
+            else:
+                sock.sendall(data)
+                send_data_to(s, msg)
 
         elif msg.split(' ')[0] == 'REMOVE' and len(msg.split(' ')) > 3:
             send_data_to(s, msg)
 
         elif msg.split(' ')[0] == 'DOWNLOAD' and len(msg.split(' ')) == 3:
-            send_data_to(s, msg)
-            f = open(msg.split(' ')[2], 'w')
-            chunknumber = 1
-            allcontent=b""
-            while True:
-                content=sock.recv(200)
-                allcontent+=content
-                if len(content)<200:
-                    print('File-End' +' '+ msg.split(' ')[2] + ' ' + msg.split(' ')[1] + ' ' + str(chunknumber) + ' ' + 'TEXT')
-                    break
-                else:
-                    print ('File ' + msg.split(' ')[2] + ' ' + msg.split(' ')[1] + ' ' + str(chunknumber)+ ' ' + 'TEXT')
-                    chunknumber += 1
-            unserializedcontent=pickle.loads(allcontent)
-            print(unserializedcontent)
-            for word in unserializedcontent:
-                f.write(word)
-            f.close()
+            reply=send_data_to(s, msg)
+            if "DOWNLOAD-ERROR" in reply:
+                pass
+            else:
+                f = open(msg.split(' ')[2], 'w')
+                chunknumber = 1
+                allcontent=b""
+                while True:
+                    content=sock.recv(200)
+                    allcontent+=content
+                    if len(content)<200:
+                        print('File-End' +' '+ msg.split(' ')[2] + ' ' + msg.split(' ')[1] + ' ' + str(chunknumber) + ' ' + 'TEXT')
+                        break
+                    else:
+                        print ('File ' + msg.split(' ')[2] + ' ' + msg.split(' ')[1] + ' ' + str(chunknumber)+ ' ' + 'TEXT')
+                        chunknumber += 1
+                unserializedcontent=pickle.loads(allcontent)
+                print(unserializedcontent)
+                for word in unserializedcontent:
+                    f.write(word)
+                f.close()
 
 
 
