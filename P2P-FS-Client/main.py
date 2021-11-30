@@ -8,22 +8,6 @@ import pickle
 
 
 # ************************************************************
-# cleanupDeRegister:
-#   Description: Functions which executes when user enters 'q' in the console.
-#       This is to De-register the user on "logout"
-#   Parameters:
-#       socketUDP: The client's UDP socket
-#       name: The client's unique name (username)
-# ************************************************************
-
-
-def cleanup_de_register(socketUDP, name):
-    if name:
-        msg = 'DE-REGISTER 99998 ' + name
-        sendDataToServer(socketUDP, msg)
-
-
-# ************************************************************
 # initiateTCPSocket:
 #   Description: Function initializes the TCP socket
 #   Parameters:
@@ -54,7 +38,7 @@ def initiateTCPSocket(CLIENT_HOST, CLIENT_PORT_TCP):
 def cleanupDeRegister(socketUDP, name):
     if name:
         msg = 'DE-REGISTER 99998 ' + name
-        sendDataToServer(socketUDP, msg)
+        sendDataToServer(socketUDP, msg, False)
 
 
 # ************************************************************
@@ -63,10 +47,11 @@ def cleanupDeRegister(socketUDP, name):
 #   Parameters:
 #       socketUDP: The client's UDP socket
 #       msg: The command message the client inputted into the console
+#       printServerResponse: Let's the function know whether it should print or not
 # ************************************************************
 
 
-def sendDataToServer(socketUDP, msg):
+def sendDataToServer(socketUDP, msg, printServerResponse=True):
     server = Server('localhost', 8888)
     while True:
         try:
@@ -83,12 +68,14 @@ def sendDataToServer(socketUDP, msg):
             # Check to make sure the RQ# sent is the same one received, or else re-loop
             if len(parsedReply) > 2 and parsedReply[1].isnumeric():
                 if msg.split(' ')[1] == parsedReply[1]:
-                    print('Server Reply: ' + reply + '\n')
+                    if printServerResponse:
+                        print('Server Reply: ' + reply + '\n')
                     return reply
                 else:
                     continue
             else:
-                print('Server Reply: ' + reply + '\n')
+                if printServerResponse:
+                    print('Server Reply: ' + reply + '\n')
                 return reply
         except Exception as e:
             pass
@@ -142,7 +129,7 @@ def startConnection():
                 isBound = True
 
             if isBound:
-                serverMsg = sendDataToServer(socketUDP, msg)
+                serverMsg = sendDataToServer(socketUDP, msg, False)
 
             # Require user to re-register if it has been denied
             if 'REGISTER-DENIED' in serverMsg:
@@ -165,31 +152,42 @@ def startConnection():
                 socketTCP.send(name.encode())
                 TCPConnected = True
 
+            print(f"Server Reply: {serverMsg}")
+
         elif msg.split(' ')[0] == 'REGISTER':
             print('Client is already Registered')
 
         elif msg.split(' ')[0] == 'UPDATE-CONTACT':
-            serverMsg = sendDataToServer(socketUDP, msg)
+            serverMsg = sendDataToServer(socketUDP, msg, False)
             if 'UPDATE-CONFIRMED' in serverMsg:
-                # Have to close the ports and set the new ports
+
                 try:
+                    # Check to see if the port is available before binding
                     if int(msg.split(' ')[4]) != client_port_UDP:
+
+                        # Have to close the ports and set the new ports
                         # Close UDP and bind to new port
                         socketUDP.close()
                         client_port_UDP = int(msg.split(' ')[4])
 
                         socketUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                         socketUDP.bind((client_host, client_port_UDP))
-                    if int(msg.split(' ')[5]) != client_port_TCP:
-                        # Close TCP and bind to new port
-                        socketTCP.close()
-                        client_port_TCP = int(msg.split(' ')[5])
 
-                        # Create new socket with new TCP port
-                        socketTCP = initiateTCPSocket(client_host, client_port_TCP)
+                    #     *** Changing TCP port causes address issue (address already in use) ***
+                    # if int(msg.split(' ')[5]) != client_port_TCP:
+                    #     # Close TCP and bind to new port
+                    #     socketTCP.close()
+                    #     client_port_TCP = int(msg.split(' ')[5])
+                    #
+                    #     # Create new socket with new TCP port
+                    #     socketTCP = initiateTCPSocket(client_host, client_port_TCP)
+
+                    print(f"Server Reply: {serverMsg} \n")
 
                 except Exception as e:
                     print(f"Error: {e}")
+            else:
+                print(f"Server Reply: {serverMsg} \n")
 
         elif msg.split(' ')[0] == 'PUBLISH':
             all_files = msg.split(' ')[3:]
@@ -257,10 +255,10 @@ def startConnection():
 
                     allContent += content
                     if len(content) < 200:
-                        print(f"FILE-END {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
+                        print(f"FILE-END {msg.split(' ')[1]} {msg.split(' ')[2]} CHUNK#{str(chunkNumber)}")
                         break
                     else:
-                        print(f"FILE {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
+                        print(f"FILE {msg.split(' ')[1]} {msg.split(' ')[2]} CHUNK#{str(chunkNumber)}")
                         chunkNumber += 1
 
             if not isDownloadError:

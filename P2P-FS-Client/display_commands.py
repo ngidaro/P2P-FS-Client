@@ -20,5 +20,5 @@ def displayCommands():
     print('Downloading a File:')
     print('\t DOWNLOAD RQ# username-to-download-from/filename.txt\n')
     print('Update Contact Information:')
-    print('\t UPDATE-CONTACT RQ# Name NEW-IP NEW-UDP_PORT NEW-TCP_PORT\n')
+    print('\t UPDATE-CONTACT RQ# Name NEW-IP NEW-UDP_PORT\n')
 
