@@ -15,8 +15,8 @@ def serializeFiles(inputString, files):
         for f in files:
             file = open(f, 'r')
             content = file.readlines()
-            content.insert(0, "01111110")
-            content.append("01111110")
+            content.insert(0, "13984756971395719y7f8eryf7842378y9784532789")
+            content.append("13984756971395719y7f8eryf7842378y9784532789")
             allFileContent += content
 
         return pickle.dumps([inputString, allFileContent])
