@@ -6,8 +6,23 @@ from Server import Server
 from parse import parse_commands as pc
 import pickle
 
-# Functions which executes when user enters 'q' in the console. This is to De-register the user on "logout"
-def cleanup_de_register(s, name):
+
+# ************************************************************
+# cleanupDeRegister:
+#   Description: Functions which executes when user enters 'q' in the console.
+#       This is to De-register the user on "logout"
+#   Parameters:
+#       socketUDP: The client's UDP socket
+#       name: The client's unique name (username)
+# ************************************************************
+
+
+def cleanup_de_register(socketUDP, name):
+    if name:
+        msg = 'DE-REGISTER 99998 ' + name
+        sendDataToServer(socketUDP, msg)
+
+
 # ************************************************************
 # initiateTCPSocket:
 #   Description: Function initializes the TCP socket
@@ -55,7 +70,6 @@ def sendDataToServer(socketUDP, msg):
     server = Server('localhost', 8888)
     while True:
         try:
-
             socketUDP.sendto(str.encode(msg), (server.host, server.port))
 
             d = socketUDP.recvfrom(1024)
@@ -95,7 +109,7 @@ def startConnection():
     isBound = False  # True if the socket has bound
     TCPConnected = False  # Check to see if client is connected to server over TCP
     name = ''
-    response = ''
+    serverMsg = ''
 
     # UDP & TCP Socket initialization
     try:
@@ -128,10 +142,10 @@ def startConnection():
                 isBound = True
 
             if isBound:
-                response = sendDataToServer(socketUDP, msg)
+                serverMsg = sendDataToServer(socketUDP, msg)
 
             # Require user to re-register if it has been denied
-            if response.split(' ')[0] == 'REGISTER-DENIED':
+            if 'REGISTER-DENIED' in serverMsg:
                 name = ''
 
             # Establish TCP connection with server on Register
@@ -156,7 +170,7 @@ def startConnection():
 
         elif msg.split(' ')[0] == 'UPDATE-CONTACT':
             serverMsg = sendDataToServer(socketUDP, msg)
-            if serverMsg.split(' ')[0] == 'UPDATE-CONFIRMED':
+            if 'UPDATE-CONFIRMED' in serverMsg:
                 # Have to close the ports and set the new ports
                 try:
                     if int(msg.split(' ')[4]) != client_port_UDP:
@@ -181,7 +195,12 @@ def startConnection():
             all_files = msg.split(' ')[3:]
             # Before sending all we should check to see if a connection is available
             try:
-                socketTCP.sendall(pf.serializeFiles(msg, all_files))
+                filesToSend = pf.serializeFiles(msg, all_files)
+                if not filesToSend:
+                    print(f"PUBLISH-DENIED {msg.split(' ')[1]} File(s) does not exist")
+                    continue
+
+                socketTCP.sendall(filesToSend)
                 serverMsg = socketTCP.recv(1024)
 
                 if not serverMsg:
@@ -201,32 +220,33 @@ def startConnection():
 
             except Exception as e:
                 print(f"Error {e}... Server may be down. Wait a few seconds and then try again...")
-                # socketTCP.close()
-                # socketUDP.close()
-                # sys.exit()
 
         elif msg.split(' ')[0] == 'DOWNLOAD' and len(msg.split(' ')) == 3:
-            send_data_to(s, msg)
             f = open(msg.split(' ')[2], 'w')
-            chunknumber = 1
-            allcontent=b""
+
+            chunkNumber = 1
+            allContent = b""
+
+            # Send DOWNLOAD request using TCP not UDP
+            socketTCP.send(pickle.dumps([msg]))
+
             while True:
-                content=sock.recv(200)
-                allcontent+=content
-                if len(content)<200:
-                    print('File-End' +' '+ msg.split(' ')[2] + ' ' + msg.split(' ')[1] + ' ' + str(chunknumber) + ' ' + 'TEXT')
+                content = socketTCP.recv(200)
+
+                allContent += content
+                if len(content) < 200:
+                    print(f"FILE-END {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
                     break
                 else:
-                    print ('File ' + msg.split(' ')[2] + ' ' + msg.split(' ')[1] + ' ' + str(chunknumber)+ ' ' + 'TEXT')
-                    chunknumber += 1
-            unserializedcontent=pickle.loads(allcontent)
-            print(unserializedcontent)
-            for word in unserializedcontent:
+                    print(f"FILE {msg.split(' ')[1]} {msg.split(' ')[2]} {str(chunkNumber)} TEXT")
+                    chunkNumber += 1
+
+            unserializedContent = pickle.loads(allContent)
+
+            for word in unserializedContent:
                 f.write(word)
+
             f.close()
-
-
-
         else:
             sendDataToServer(socketUDP, msg)
 
