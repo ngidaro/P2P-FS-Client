@@ -38,7 +38,10 @@ def initiateTCPSocket(CLIENT_HOST, CLIENT_PORT_TCP):
 def cleanupDeRegister(socketUDP, name):
     if name:
         msg = 'DE-REGISTER 99998 ' + name
-        sendDataToServer(socketUDP, msg, False)
+        if sendDataToServer(socketUDP, msg, False) is False:
+            return False
+        else:
+            return True
 
 
 # ************************************************************
@@ -57,6 +60,8 @@ def sendDataToServer(socketUDP, msg, printServerResponse=True):
         try:
             socketUDP.sendto(str.encode(msg), (server.host, server.port))
 
+            # 3 second timeout
+            socketUDP.settimeout(3)
             d = socketUDP.recvfrom(1024)
 
             reply = str(d[0].decode())
@@ -77,6 +82,9 @@ def sendDataToServer(socketUDP, msg, printServerResponse=True):
                 if printServerResponse:
                     print('Server Reply: ' + reply + '\n')
                 return reply
+        except socket.timeout as e:
+            print("Error: Connection Timed-out... Server may be down")
+            return False
         except Exception as e:
             pass
     return ''
@@ -114,22 +122,32 @@ def startConnection():
             dc.displayCommands()
         elif msg == 'q':
             # De-register the user when the program quits
-            cleanupDeRegister(socketUDP, name)
-            socketTCP.close()
-            socketUDP.close()
-            sys.exit()
+            if cleanupDeRegister(socketUDP, name) is not False:
+                socketTCP.close()
+                socketUDP.close()
+                sys.exit()
         # If name does not exist then the user has not Registered
         elif not name:
             client_host, client_port_UDP, client_port_TCP, name = pc.validateUserCommand(msg)
 
             if not isBound and client_host and client_port_UDP and client_port_TCP:
 
-                # Binding only needs to happen once
-                socketUDP.bind((client_host, client_port_UDP))
-                isBound = True
+                try:
+                    # Binding only needs to happen once
+                    socketUDP.bind((client_host, client_port_UDP))
+                    isBound = True
+                except Exception as e:
+                    print(f"Error UDP: {e}")
+                    socketUDP.close()
+                    socketTCP.close()
+                    sys.exit()
 
             if isBound:
                 serverMsg = sendDataToServer(socketUDP, msg, False)
+
+            if serverMsg is False:
+                name = ''
+                continue
 
             # Require user to re-register if it has been denied
             if 'REGISTER-DENIED' in serverMsg:
@@ -143,7 +161,7 @@ def startConnection():
                     socketTCP.connect(('', 11111))
                 except Exception as e:
                     # Address already in use...
-                    print(f"Error... {e}")
+                    print(f"Error TCP... {e}")
                     cleanupDeRegister(socketUDP, name)
                     socketTCP.close()
                     socketUDP.close()
@@ -199,6 +217,10 @@ def startConnection():
                     print(f"PUBLISH-DENIED {msg.split(' ')[1]} File(s) does not exist")
                     continue
 
+                # If closed is in the string in socketTCP, then we need to create a new one before sending files
+                if "closed" in str(socketTCP):
+                    socketTCP = initiateTCPSocket(client_host, client_port_TCP)
+
                 socketTCP.sendall(filesToSend)
                 serverMsg = socketTCP.recv(1024)
 
@@ -225,53 +247,61 @@ def startConnection():
             allContent = b""
             isDownloadError = False
 
-            # Send DOWNLOAD request using TCP not UDP
-            socketTCP.send(pickle.dumps([msg]))
-
-            while True:
-                content = socketTCP.recv(200)
-
-                if not content:
-                    # If content is empty then connection to server has ended. At this moment, the server may have
-                    # terminated and then restored, so we have to create a new TCP socket
-
-                    # Close TCP and bind to new port
-                    socketTCP.close()
-
-                    # Create new socket with new TCP port
+            try:
+                # # If closed is in the string in socketTCP, then we need to create a new one before sending files
+                if "closed" in str(socketTCP):
                     socketTCP = initiateTCPSocket(client_host, client_port_TCP)
 
-                    socketTCP.send(pickle.dumps([msg]))
-                    continue
-                else:
-                    try:
-                        if content.decode().split(' ')[0] == "DOWNLOAD-ERROR":
-                            print(f"Server reply: {content.decode()}")
-                            isDownloadError = True
-                            break
-                    except UnicodeDecodeError as e:
-                        # If this is the error, then the data passed from server has been dumped by pickle
-                        pass
+                # Send DOWNLOAD request using TCP not UDP
+                socketTCP.send(pickle.dumps([msg]))
 
-                    allContent += content
-                    if len(content) < 200:
-                        print(f"FILE-END {msg.split(' ')[1]} {msg.split(' ')[2]} CHUNK#{str(chunkNumber)}")
-                        break
+                while True:
+                    content = socketTCP.recv(200)
+
+                    if not content:
+                        # If content is empty then connection to server has ended. At this moment, the server may have
+                        # terminated and then restored, so we have to create a new TCP socket
+
+                        # Close TCP and bind to new port
+                        socketTCP.close()
+
+                        # Create new socket with new TCP port
+                        socketTCP = initiateTCPSocket(client_host, client_port_TCP)
+
+                        socketTCP.send(pickle.dumps([msg]))
+                        continue
                     else:
-                        print(f"FILE {msg.split(' ')[1]} {msg.split(' ')[2]} CHUNK#{str(chunkNumber)}")
-                        chunkNumber += 1
+                        try:
+                            if content.decode().split(' ')[0] == "DOWNLOAD-ERROR":
+                                print(f"Server reply: {content.decode()}")
+                                isDownloadError = True
+                                break
+                        except UnicodeDecodeError as e:
+                            # If this is the error, then the data passed from server has been dumped by pickle
+                            pass
 
-            if not isDownloadError:
-                parsedMsg = msg.split(' ')
-                filename = parsedMsg[2].split('/')[1]
-                f = open(filename, 'w')
+                        allContent += content
+                        if len(content) < 200:
+                            print(f"FILE-END {msg.split(' ')[1]} {msg.split(' ')[2]} CHUNK#{str(chunkNumber)}")
+                            break
+                        else:
+                            print(f"FILE {msg.split(' ')[1]} {msg.split(' ')[2]} CHUNK#{str(chunkNumber)}")
+                            chunkNumber += 1
 
-                unserializedContent = pickle.loads(allContent)
+                if not isDownloadError:
+                    parsedMsg = msg.split(' ')
+                    filename = parsedMsg[2].split('/')[1]
+                    f = open(filename, 'w')
 
-                for word in unserializedContent:
-                    f.write(word)
+                    unserializedContent = pickle.loads(allContent)
 
-                f.close()
+                    for word in unserializedContent:
+                        f.write(word)
+
+                    f.close()
+            except Exception as e:
+                print(f"Error {e}... Server may be down. Wait a few seconds and then try again...")
+
         else:
             sendDataToServer(socketUDP, msg)
 
