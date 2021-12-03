@@ -90,6 +90,15 @@ def sendDataToServer(socketUDP, msg, printServerResponse=True):
     return ''
 
 
+def setInitialValues():
+    client_port_UDP = 0  # Can be 8889
+    client_port_TCP = 0  # Can be 10000
+    isBound = False  # True if the socket has bound
+    name = ''
+
+    return client_port_UDP, client_port_TCP, isBound, name
+
+
 # ************************************************************
 # startConnection:
 #   Description: Function which starts the TCP and UDP connections and handles user command inputs
@@ -99,12 +108,10 @@ def sendDataToServer(socketUDP, msg, printServerResponse=True):
 
 def startConnection():
     client_host = ''  # Can be '0.0.0.0'
-    client_port_UDP = 0  # Can be 8889
-    client_port_TCP = 0  # Can be 10000
-    isBound = False  # True if the socket has bound
     TCPConnected = False  # Check to see if client is connected to server over TCP
-    name = ''
     serverMsg = ''
+
+    client_port_UDP, client_port_TCP, isBound, name = setInitialValues()
 
     # UDP & TCP Socket initialization
     try:
@@ -130,28 +137,42 @@ def startConnection():
         elif not name:
             client_host, client_port_UDP, client_port_TCP, name = pc.validateUserCommand(msg)
 
-            if not isBound and client_host and client_port_UDP and client_port_TCP:
+            if not name:
+                # Validation failed... user inputted a command but was not yet registered
+                continue
 
+            if not isBound and client_host and client_port_UDP and client_port_TCP:
                 try:
                     # Binding only needs to happen once
                     socketUDP.bind((client_host, client_port_UDP))
                     isBound = True
                 except Exception as e:
                     print(f"Error UDP: {e}")
+                    # Close socket and reopen a new one
                     socketUDP.close()
-                    socketTCP.close()
-                    sys.exit()
+                    socketUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    # Set values back to 0 so that we can rerun this portion of the code
+                    client_port_UDP, client_port_TCP, isBound, name = setInitialValues()
+                    continue
 
             if isBound:
                 serverMsg = sendDataToServer(socketUDP, msg, False)
 
+            # server message is False if the server timed-out
             if serverMsg is False:
                 name = ''
                 continue
 
             # Require user to re-register if it has been denied
             if 'REGISTER-DENIED' in serverMsg:
-                name = ''
+                # Need to reset everything back to 0/False
+                # Close socket and reopen a new one
+                socketUDP.close()
+                socketUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                # Set values back to 0 so that we can rerun this portion of the code
+                client_port_UDP, client_port_TCP, isBound, name = setInitialValues()
+                print(f"Server Reply: {serverMsg}")
+                continue
 
             # Establish TCP connection with server on Register
             if name and not TCPConnected:
@@ -165,7 +186,11 @@ def startConnection():
                     cleanupDeRegister(socketUDP, name)
                     socketTCP.close()
                     socketUDP.close()
-                    sys.exit()
+                    socketUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    socketTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    # Reset values back to default
+                    client_port_UDP, client_port_TCP, isBound, name = setInitialValues()
+                    continue
 
                 socketTCP.send(name.encode())
                 TCPConnected = True
@@ -209,8 +234,11 @@ def startConnection():
 
         elif msg.split(' ')[0] == 'PUBLISH':
             all_files = msg.split(' ')[3:]
+
+            if msg.split(' ')[2] != name:
+                print("Cannot Publish a file on behalf of another user...")
+                continue
             
-            # Before sending all we should check to see if a connection is available
             try:
                 filesToSend = pf.serializeFiles(msg, all_files)
                 if not filesToSend:
@@ -301,6 +329,28 @@ def startConnection():
                     f.close()
             except Exception as e:
                 print(f"Error {e}... Server may be down. Wait a few seconds and then try again...")
+
+        elif msg.split(' ')[0] == 'DE-REGISTER' and len(msg.split(' ')) == 3:
+            if msg.split(' ')[2] != name:
+                print("Cannot DE-REGISTER another user...")
+                continue
+            else:
+                sendDataToServer(socketUDP, msg)
+                # Close everything and setup new sockets (As if the client restarted the program)
+                socketTCP.close()
+                socketUDP.close()
+                socketUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                socketTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client_port_UDP, client_port_TCP, isBound, name = setInitialValues()
+                TCPConnected = False
+                continue
+
+        elif msg.split(' ')[0] == 'REMOVE' and len(msg.split(' ')) > 3:
+            if msg.split(' ')[2] != name:
+                print("Cannot REMOVE a file that belongs to another user")
+                continue
+            else:
+                sendDataToServer(socketUDP, msg)
 
         else:
             sendDataToServer(socketUDP, msg)
