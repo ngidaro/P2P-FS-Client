@@ -6,6 +6,7 @@ from Server import Server
 from parse import parse_commands as pc
 import pickle
 
+SERVER_HOST = '0.0.0.0'
 
 # ************************************************************
 # initiateTCPSocket:
@@ -20,7 +21,7 @@ def initiateTCPSocket(CLIENT_HOST, CLIENT_PORT_TCP):
     socketTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socketTCP.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socketTCP.bind((CLIENT_HOST, CLIENT_PORT_TCP))
-    socketTCP.connect(('', 11111))
+    socketTCP.connect((SERVER_HOST, 11111))
 
     return socketTCP
 
@@ -55,7 +56,7 @@ def cleanupDeRegister(socketUDP, name):
 
 
 def sendDataToServer(socketUDP, msg, printServerResponse=True):
-    server = Server('localhost', 8888)
+    server = Server(SERVER_HOST, 8888)
     while True:
         try:
             socketUDP.sendto(str.encode(msg), (server.host, server.port))
@@ -179,7 +180,7 @@ def startConnection():
                 try:
                     socketTCP.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     socketTCP.bind(('', client_port_TCP))
-                    socketTCP.connect(('', 11111))
+                    socketTCP.connect((SERVER_HOST, 11111))
                 except Exception as e:
                     # Address already in use...
                     print(f"Error TCP... {e}")
